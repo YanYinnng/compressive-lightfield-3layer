@@ -78,7 +78,7 @@ test3 规模（1100 例）的全流程耗时：
 - **复用原图仍然自洽**：两只眼共用同一块成像面，复用原图 51.4 dB，按该相机重新渲染 51.8 dB。
 - **求解**：离轴分支用无训练的偏振场层析 SART 作初值（`lightfield_lab/tomographic.py`），再做 Adam 精修。
 
-[交互式图解](docs/offaxis_camera_tutorial.html)可以拖动眼睛位置，对比四种相机建法。需要下载到本地后用浏览器打开。
+[交互式图解](https://yanyinnng.github.io/compressive-lightfield-3layer/)（在线打开）可以拖动眼睛位置，对比四种相机建法。
 
 ### 分层：在等价解中挑选
 
