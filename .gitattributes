@@ -1,0 +1,2 @@
+# Store bytes exactly (TA originals are CRLF, our .sh must stay LF).
+* -text

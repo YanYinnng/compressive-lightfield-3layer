@@ -1,0 +1,3 @@
+[submodule "EyeReal"]
+	path = EyeReal
+	url = https://github.com/WeijieMax/EyeReal.git

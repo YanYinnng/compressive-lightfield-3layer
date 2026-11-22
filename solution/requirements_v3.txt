@@ -1,0 +1,9 @@
+# Python 3.10+; install a CUDA-enabled PyTorch matching the host driver.
+numpy>=1.26
+Pillow>=11
+torch>=2.4
+torchvision>=0.19
+scipy>=1.11
+# cupy-cuda12x (or the CuPy build matching your CUDA) for the default fused backend
+opencv-python-headless>=4.8  # stereo depth for the hard layering constraint (optional; Depth Anything runs without it)
+# optional: isal (python-isal) for faster PNG deflate; zlib is used otherwise

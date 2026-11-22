@@ -1,0 +1,3 @@
+# Python 3.10 / light_310. Interface IO only; add your method's dependencies.
+numpy==2.2.6
+Pillow==12.1.1

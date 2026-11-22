@@ -1,0 +1,17 @@
+# Code and docs only; data, results and archives stay on disk (and on the platform).
+__pycache__/
+*.py[cod]
+weights/
+datasets/
+runs/
+_archive/
+_ta_releases/
+data_collection/assets/
+*.pth
+*.zip
+*.tar
+*.tar.gz
+# Local login settings for the competition API: never commit.
+submit_config.local.json
+.fused_build/
+pydeps/

@@ -1,0 +1,632 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><title>离轴相机图解</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;900&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a reading column for the argument, one wide instrument panel in the middle that the text keeps pointing back to. */
+:root{
+  --paper:#f4f6f8; --panel:#ffffff; --ink:#15202b; --muted:#5a6673; --rule:#d6dce3; --soft:#e9edf1;
+  --eye:#c2410c; --l2:#15202b; --l13:#8a96a3; --screen-fill:#dfe7ee;
+  --m-standard:#6b7785; --m-shift:#7c3aed; --m-bbox:#c77700; --m-screen:#0f7a6c;
+  --display:"Noto Serif SC","Songti SC","SimSun",serif;
+  --body:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"Consolas",monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0f151b; --panel:#162029; --ink:#e6ecf1; --muted:#9aa7b4; --rule:#2b3843; --soft:#1d2933;
+  --eye:#fb8c4a; --l2:#e6ecf1; --l13:#7d8b98; --screen-fill:#22303c;
+  --m-standard:#9aa6b3; --m-shift:#a78bfa; --m-bbox:#f0a531; --m-screen:#2fc3ad; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0f151b; --panel:#162029; --ink:#e6ecf1; --muted:#9aa7b4; --rule:#2b3843; --soft:#1d2933;
+  --eye:#fb8c4a; --l2:#e6ecf1; --l13:#7d8b98; --screen-fill:#22303c;
+  --m-standard:#9aa6b3; --m-shift:#a78bfa; --m-bbox:#f0a531; --m-screen:#2fc3ad; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.75;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+.col{max-width:720px;margin:0 auto}
+.wide{max-width:1180px;margin:0 auto}
+header{padding-block:56px 24px}
+.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:900;font-size:clamp(30px,5vw,46px);line-height:1.2;margin:10px 0 14px;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:clamp(22px,3.2vw,28px);line-height:1.3;margin:56px 0 12px;text-wrap:balance}
+h3{font-size:17px;margin:28px 0 6px}
+p{margin:10px 0}
+.lede{font-size:18px;color:var(--muted)}
+code,.num{font-family:var(--mono);font-size:.92em}
+.num{font-variant-numeric:tabular-nums}
+a{color:var(--m-screen)}
+hr{border:0;border-top:1px solid var(--rule);margin:40px 0}
+
+/* five short answers */
+.qa{display:grid;gap:0;border-top:1px solid var(--rule);margin-top:20px}
+.qa div{display:grid;grid-template-columns:2.2em 1fr;gap:4px 12px;padding:14px 0;border-bottom:1px solid var(--rule)}
+.qa b{font-family:var(--mono);color:var(--muted);font-weight:600}
+.qa strong{display:block}
+.qa p{margin:2px 0 0;color:var(--ink)}
+.qa a{font-size:14px}
+
+.formula{font-family:var(--mono);background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:14px 16px;overflow-x:auto;white-space:pre;font-size:14px;line-height:1.7}
+.note{color:var(--muted);font-size:14px}
+
+/* instrument panel */
+.lab{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:18px;margin:28px auto}
+.controls{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:flex-end}
+.ctl{display:flex;flex-direction:column;gap:4px;min-width:170px;flex:1 1 170px}
+.ctl label{font-size:13px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.ctl label span{font-family:var(--mono);color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--eye)}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{font:inherit;font-size:14px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.seg button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+.seg button:focus-visible,input:focus-visible{outline:2px solid var(--eye);outline-offset:2px}
+.sw{width:10px;height:10px;border-radius:50%;display:inline-block}
+.presets{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
+.presets button{font:inherit;font-size:13px;border:0;background:var(--soft);color:var(--ink);border-radius:4px;padding:3px 9px;cursor:pointer}
+
+.views{display:grid;grid-template-columns:minmax(0,0.85fr) minmax(0,1fr);grid-template-areas:"a b" "a c";gap:18px 22px;margin-top:18px}
+.views .va{grid-area:a}.views .vb{grid-area:b}.views .vc{grid-area:c}
+@media (max-width:900px){.views{grid-template-columns:1fr;grid-template-areas:"a" "b" "c"}}
+.view{min-width:0;display:flex;flex-direction:column;gap:6px}
+.view h4{margin:0;font-size:14px;display:flex;gap:8px;align-items:baseline}
+.view h4 i{font-style:normal;font-family:var(--mono);color:var(--muted);font-size:12px}
+.view svg{width:100%;height:auto;display:block;background:var(--paper);border-radius:6px;touch-action:none}
+.view p{margin:0;font-size:13px;color:var(--muted);line-height:1.6}
+#imgView{cursor:crosshair}
+
+.readout{margin-top:16px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:500;color:var(--muted);font-size:13px}
+td{font-family:var(--mono);font-variant-numeric:tabular-nums}
+td:first-child{font-family:var(--body)}
+tr.sel td{background:var(--soft);font-weight:600}
+.tablewrap{overflow-x:auto;margin:14px 0}
+.diag{font-weight:700;color:var(--m-screen)}
+
+/* SVG strokes and fills, all from tokens */
+.ax{stroke:var(--rule);stroke-width:1}
+.layer2{stroke:var(--l2);stroke-width:3}
+.layer13{stroke:var(--l13);stroke-width:2;stroke-dasharray:6 5}
+.lbl{fill:var(--muted);font-family:var(--body)}
+.lblink{fill:var(--ink);font-family:var(--body)}
+.eyedot{fill:var(--eye)}
+.eyeoff{fill:var(--paper);stroke:var(--eye);stroke-width:1.5}
+.frame{fill:none;stroke:var(--ink);stroke-width:4}
+.screenrect{fill:var(--screen-fill);stroke:var(--l2);stroke-width:5}
+.pick{fill:var(--eye);stroke:var(--panel);stroke-width:3}
+.pickray{stroke:var(--eye);stroke-width:2}
+
+/* evaluation flow */
+.flow{display:grid;gap:12px;margin:18px 0}
+.lane{display:grid;grid-template-columns:7.5em repeat(4,minmax(0,1fr));gap:8px;align-items:stretch}
+.lane>div{background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:9px 11px;font-size:14px;line-height:1.5;min-width:0}
+.lane>.tag{background:none;border:0;padding:9px 0;font-weight:700}
+.lane .diff{border-color:var(--eye);box-shadow:inset 3px 0 0 var(--eye)}
+@media (max-width:720px){.lane{grid-template-columns:1fr}.lane>.tag{padding:0}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="col">
+  <div class="kicker">压缩光场 · 第三问 · 离轴</div>
+  <h1>离轴建模，到底在建什么模</h1>
+  <p class="lede">一个眼睛位置，一张不变的输入图，四种都说得通的相机。下面用一张可拖动的图，把"离轴"拆成几个能看见的问题。</p>
+</header>
+
+<section class="col">
+  <h2 id="answers">先给五个短答案</h2>
+  <div class="qa">
+    <div><b>Q1</b><span><strong>离轴要解决什么问题？</strong><p>普通任务里，每只眼被当成"对准屏幕中心、水平视场 40°、画面居中"的相机，屏幕只占画面的一部分，斜看时还是个梯形。头部跟踪显示的做法不同：眼睛透过屏幕这扇"窗"看内容，画面应该正好铺在这扇窗上，眼睛偏到哪里，视锥就跟着歪到哪里。离轴任务要你把同一对输入图重新理解成"透过屏幕看到的画面"，再为它求三层图样。</p><a href="#lab">看交互图</a></span></div>
+    <div><b>Q2</b><span><strong>我到底在建什么模？</strong><p>建每只眼的相机：眼睛在哪（位置），以及画面上每个像素对应哪条视线（由朝向 R 和内参 K 共同决定）。目标图不变，所以这张"像素→视线"对应表一换，每个像素的颜色要从屏幕上哪一点发出来，也就跟着换了。</p><a href="#camera">相机拆开看</a></span></div>
+    <div><b>Q3</b><span><strong>为什么有不同建法？</strong><p>题目只给了眼睛位置和目标图，没规定这张对应表。可以保持朝向只挪主点，可以保持朝向把画框缩放到正好框住屏幕，也可以把成像面转到和屏幕平行。三种都合理，但给出的目标光场不同，只有和评测方用的那一种一致才能得分。</p><a href="#models">四种建法对比</a></span></div>
+    <div><b>Q4</b><span><strong>只改内参，是不是位置和朝向都不动？</strong><p>是。K 只能在原来那块成像面上平移、缩放坐标，成像面的朝向由 R 决定。要让成像面和屏幕平行，必须改 R，只改 K 做不到。我们最后用的屏幕平面相机改了朝向，但眼睛位置没动。</p><a href="#konly">为什么只改 K 不够</a></span></div>
+    <div><b>Q5</b><span><strong>测评和非离轴有什么区别？</strong><p>目标图完全一样，都是那对左右眼图，不重新渲染。区别只在用哪台相机把三层图样"看"成眼图：普通情况用标准相机，离轴情况用离轴相机。你声明的相机要和评测方的一致，不一致时求解得再好也只有 13–17 dB。</p><a href="#eval">测评流程对比</a></span></div>
+  </div>
+</section>
+
+<section class="col">
+  <h2 id="camera">先把"相机"拆开：位置 + 像素到视线的对应</h2>
+  <p>在这道题里，相机不是用来拍照的，而是一张对应表：从眼睛出发，画面上的像素 (u, v) 对应哪一条视线。助教代码里的写法是：</p>
+  <div class="formula">视线方向 d(u, v) = R · ( (u − cx)/fx ,  −(v − cy)/fy ,  −1 )
+起点     = 眼睛位置 C
+
+K = [[fx, 0, cx], [0, fy, cy], [0, 0, 1]]     fx, fy：焦距（像素）  cx, cy：主点
+R = 相机的 右 / 上 / 后 三个轴（世界坐标）       视线朝向"后"的反方向</div>
+  <p>这张表由三部分决定：</p>
+  <p><strong>位置 C</strong>：眼睛在哪。题目给定，不能动。<br>
+  <strong>朝向 R</strong>：成像面朝哪个方向摆。<br>
+  <strong>内参 K</strong>：在这块成像面上，像素坐标怎么排布：主点 (cx, cy) 是光轴穿过画面的那个像素，焦距决定一个像素占多大角度。</p>
+  <p>渲染一只眼的眼图时，每个像素沿自己的视线依次穿过 L1、L2、L3，把三层的相位加起来，再算 sin²。所以<strong>换相机 = 换"哪个像素看哪条视线"</strong>。眼睛位置不变时，从眼睛发出的视线集合其实一条都没变，变的只是每条视线被记在哪个像素上。</p>
+  <p class="note">普通任务的标准相机：fx = fy = 1920 / (2·tan20°) ≈ 2637.6，主点在画面中心 (960, 540)，R 让相机正对屏幕中心 O2、不滚转。</p>
+</section>
+
+<section class="wide" id="lab">
+  <div class="lab">
+    <div class="controls">
+      <div class="ctl"><label for="dist">眼睛到屏幕中心的距离<span id="distV"></span></label><input id="dist" type="range" min="0.6" max="1.4" step="0.05" value="1.0"></div>
+      <div class="ctl"><label for="yaw">左右偏转（向右为正）<span id="yawV"></span></label><input id="yaw" type="range" min="-30" max="30" step="1" value="25"></div>
+      <div class="ctl"><label for="elev">上下仰角<span id="elevV"></span></label><input id="elev" type="range" min="-5" max="10" step="1" value="5"></div>
+      <div class="ctl" style="flex:0 1 auto;min-width:0"><label>哪只眼</label><div class="seg" id="eyeSeg"><button type="button" data-eye="0">左眼</button><button type="button" data-eye="1">右眼</button></div></div>
+    </div>
+    <div class="controls" style="margin-top:14px">
+      <div class="ctl" style="flex:1 1 100%"><label>建法</label><div class="seg" id="modelSeg"></div></div>
+      <div class="presets">试试：<button type="button" data-p="1,0,0">正对屏幕</button><button type="button" data-p="1,25,5">偏右斜看</button><button type="button" data-p="1.4,-30,10">远处、偏左、偏高</button><button type="button" data-p="0.6,0,0">贴近屏幕</button></div>
+    </div>
+    <p class="note" style="margin:10px 0 0">滑块范围按 test2 的眼位设计：距离 0.6–1.4 m，偏转 ±30°，仰角 −5° 到 10°，瞳距 6 cm，两只眼都注视屏幕中心。</p>
+
+    <div class="views">
+      <div class="view va">
+        <h4>A　俯视图 <i>从头顶往下看</i></h4>
+        <svg id="topView" viewBox="0 -30 600 640" role="img" aria-label="俯视图：屏幕三层、眼睛和相机视锥"></svg>
+        <p>上方三条线是三层屏（实线 L2），下方圆点是两只眼。彩色楔形是所选建法的水平视锥，粗短线是它的成像面，虚线是光轴。橙线是你在图 B 里点的那个像素的视线。</p>
+      </div>
+      <div class="view vb">
+        <h4>B　这只眼的画面 <i>1920 × 1080，点一下选像素</i></h4>
+        <svg id="imgView" viewBox="-400 -225 2720 1530" role="img" aria-label="眼图画面中屏幕三层的位置"></svg>
+        <p>黑框是画面边界。实线四边形是 L2 屏幕在画面里的位置，虚线是 L1、L3。十字是主点。能同时穿过三层屏幕的像素才参与评分，比例写在右下角。</p>
+      </div>
+      <div class="view vc">
+        <h4>C　画面被"贴"到屏幕哪里 <i>正对 L2 看</i></h4>
+        <svg id="scrView" viewBox="-960 -540 3840 2160" role="img" aria-label="正视屏幕：画面在 L2 平面上的落点"></svg>
+        <p>灰色矩形是 L2 屏幕。彩色网格是把画面的边框和 4×4 网格沿视线投到 L2 平面上的结果，也就是"这张输入图被铺在屏幕的哪里"。四个彩色点是你选的像素在四种建法下各自落在屏幕上的位置。</p>
+      </div>
+    </div>
+
+    <div class="readout">
+      <table id="kTable" aria-label="四种建法的相机参数">
+        <thead><tr><th>建法（当前这只眼）</th><th>fx</th><th>fy</th><th>cx</th><th>cy</th><th>朝向</th><th>有效像素</th><th>所选像素落在 L2 的位置</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="col">
+  <h2 id="models">四种建法，各自在做什么</h2>
+  <p>四种建法的眼睛位置完全一样，区别只在"像素→视线"的对应。切换上面的建法按钮，对照着看：</p>
+  <h3><span class="sw" style="background:var(--m-standard)"></span>　标准相机（普通任务）</h3>
+  <p>看向屏幕中心，视场 40°，主点居中。把"偏右斜看"和"远处、偏左、偏高"两个预设各点一下：图 B 里屏幕变成偏到一边的梯形，只占画面的一部分；图 C 里画面铺到屏幕外面很大一片。练习集平均只有约 58% 的像素能落在三层屏幕上。</p>
+  <h3><span class="sw" style="background:var(--m-shift)"></span>　主点平移（我们 11-07 的第一版）</h3>
+  <p>朝向和焦距都不动，只把主点挪一下，让屏幕在画面里居中；两只眼取同一个平移量。它只是把画框整体挪了挪，屏幕在画面里的大小和梯形形状都不变，有效像素和标准相机差不多。官方离轴得分 5/20。</p>
+  <h3><span class="sw" style="background:var(--m-bbox)"></span>　包围框</h3>
+  <p>朝向不动，同时调焦距和主点，让画框正好框住 L2 的外接矩形。fx 和 fy 不再相等，像素变成长方形。图 B 里屏幕顶到了画框四边，但还是梯形；图 C 里贴到屏幕上的网格仍然是透视变形的。官方离轴约 15 dB。</p>
+  <h3><span class="sw" style="background:var(--m-screen)"></span>　屏幕平面相机（Kooima，最终方案）</h3>
+  <p>把成像面转到和屏幕平行，再让画面正好等于 L2 屏幕。图 B 里 L2 的四边形和画框完全重合；图 C 里网格横平竖直，正好铺满屏幕：画面上的像素 (u, v) 就落在屏幕的像素 (u, v) 上。推导只要两步：</p>
+  <div class="formula">眼睛位置 p = (pₓ, p_y, p_z)，屏幕每米像素数 s = 1920 / 0.596736 ≈ 3217.5
+
+主点 = 眼睛在 L2 上的垂足 (0, p_y, p_z) 对应的屏幕像素：  cx = 960 + s·p_y，  cy = 540 − s·p_z
+焦距 = 眼睛到 L2 的垂直距离 × s：                       fx = fy = s·pₓ
+朝向：右 = +y，上 = +z，后 = +x（成像面平行于屏幕）</div>
+  <p>主点偏离画面中心多少，就是"离轴"了多少。把眼睛拖到屏幕边缘以外（比如"远处、偏左、偏高"），主点会跑到画面外面，练习集里约 39% 的眼睛是这样。这在头部跟踪显示里是正常现象，叫离轴视锥：视锥由眼睛到屏幕四个角的连线决定，左右、上下都不对称。</p>
+</section>
+
+<section class="col">
+  <h2 id="konly">为什么"只改 K"做不到贴合屏幕</h2>
+  <p>一句话版本：K 只能在成像面上做平移和缩放，决定"梯形还是矩形"的那一项根本不经过 K，只由朝向 R 决定。下面分四步把这件事算出来。</p>
+
+  <h3>第 1 步：投影写成两段</h3>
+  <p>为了少写负号，把相机坐标写成"右 / 下 / 前"三个轴，记作 r、d、f（都是世界坐标里的单位向量，f 指向眼睛前方）。一个世界点 X 在相机里的坐标是</p>
+  <div class="formula">x = r·(X − C)      y = d·(X − C)      z = f·(X − C)     （z 是深度，在眼前方时 z &gt; 0）</div>
+  <p>投影分两段。先除以深度，得到归一化坐标；再用 K 换算成像素：</p>
+  <div class="formula">第一段（只和 R、C 有关）：  x̂ = x / z ,   ŷ = y / z
+第二段（只和 K 有关）：    u = fx·x̂ + cx ,   v = fy·ŷ + cy
+
+写成矩阵：  λ·[u, v, 1]ᵀ = K·[x, y, z]ᵀ ,   K = [[fx, 0, cx], [0, fy, cy], [0, 0, 1]]</div>
+  <p>K 的第三行是 [0, 0, 1]，所以 λ = z：K 碰不到"除以深度"这一步。第二段对 (x̂, ŷ) 只是横向乘 fx、纵向乘 fy、再加一个平移。这类变换把直线变成直线、平行线仍然平行、矩形仍是矩形、梯形仍是梯形。</p>
+
+  <h3>第 2 步：屏幕上的点投到成像面上</h3>
+  <p>L2 上的点写成 X = (0, s, t)，s 是屏幕上的横坐标（向右），t 是纵坐标（向上），单位米。代入第 1 步，深度是</p>
+  <div class="formula">z(s, t) = f·(X − C) = f_y·s + f_z·t − f·C</div>
+  <p>其中 f_y、f_z 是前向 f 在世界 y、z 方向上的分量。x、y 也都是 s、t 的一次式。所以从屏幕坐标到归一化坐标是一个分式：</p>
+  <div class="formula">x̂ = (a₁ s + b₁ t + c₁) / (f_y s + f_z t − f·C)
+ŷ = (a₂ s + b₂ t + c₂) / (f_y s + f_z t − f·C)
+
+矩阵形式：  λ·[x̂, ŷ, 1]ᵀ = G·[s, t, 1]ᵀ ,   G 的第三行 = (f_y, f_z, −f·C)</div>
+  <p>这就是一个单应（透视变换）。分母随 s、t 变化，意思是屏幕上不同位置离眼睛的深度不同：近的一侧放大，远的一侧缩小，屏幕上本来平行的上下两条边投过来会向远处汇聚。这就是梯形的来源。</p>
+
+  <h3>第 3 步：K 改不了 G 的第三行</h3>
+  <p>把两段连起来，从屏幕坐标到画面像素是</p>
+  <div class="formula">λ·[u, v, 1]ᵀ = K·G·[s, t, 1]ᵀ</div>
+  <p>K 的第三行是 [0, 0, 1]，所以 K·G 的第三行就等于 G 的第三行 (f_y, f_z, −f·C)，<strong>和 K 取什么值完全无关</strong>。画面上的网格要和屏幕网格一一对应，即 (u, v) 是 (s, t) 的一次函数、没有分母变化，就必须让这一行变成 (0, 0, 常数)：</p>
+  <div class="formula">f_y = 0  且  f_z = 0    ⟺    前向 f 平行于世界 x 轴    ⟺    成像面平行于屏幕</div>
+  <p>f 是 R 的一部分。所以能不能贴合屏幕，只取决于朝向；K 再怎么调，都只是在梯形上做平移和缩放。主点平移只动 cx、cy，包围框同时动 fx、fy、cx、cy，两者都没碰 f，所以在图 C 里网格总是歪的。</p>
+  <p class="note">数值例子（标准相机，左眼）：眼睛 1.0 m 正对屏幕时，f = (−0.9996, 0.030, 0)，f_y 不为 0 是因为每只眼都向 O2 内收了 1.7°；偏右 25°、仰 5° 时，f = (−0.915, −0.394, −0.087)，透视项大得多。即使允许任意仿射（比 K 还自由），把斜看时的梯形四角拉到画框四角，也仍差 50–70 像素；正对时也差约 5 像素。</p>
+
+  <h3>第 4 步：转到屏幕方向后，K 正好就是屏幕平面相机</h3>
+  <p>令前向 f = −x（正对屏幕看）、右 r = +y、下 d = −z。眼睛在 C = (Cₓ, C_y, C_z)，深度处处等于 Cₓ，分母不再变化：</p>
+  <div class="formula">u = fx·(s − C_y)/Cₓ + cx          希望等于屏幕像素  S·s + 960
+v = fy·(C_z − t)/Cₓ + cy          希望等于屏幕像素  540 − S·t        （S = 1920 / 0.596736 ≈ 3217.5 像素/米）
+
+对比系数： fx = fy = S·Cₓ ,   cx = 960 + S·C_y ,   cy = 540 − S·C_z</div>
+  <p>这正是上面"屏幕平面相机"那组公式。所以完整的说法是：先用 R 把成像面转到和屏幕平行，消掉透视项；剩下的平移、缩放再交给 K。</p>
+  <p>换个角度看，眼睛不动、只转成像面时，同一条视线在新旧两块成像面上的像素之间，正好差一个单应 H = K′·R′ᵀ·R·K⁻¹。它的第三行一般不是 [0, 0, 1]，所以没法塞进 K，只能写进 R。</p>
+
+  <p>所以回答 Q4：<strong>只改内参，眼睛位置和朝向都不动</strong>。屏幕平面相机动了朝向，但眼睛位置不动；而眼睛不动时，视线集合不变，转动成像面只是换了一种给视线编号的方式。我们把题目说的"外参不变"理解为"眼睛位置不变"。助教的提交接口里本来就要求交 <code>pose_l</code>、<code>pose_r</code>，模板注释写的是 "L2 camera calculation"，11:40 那次用这个模型拿到了离轴满分。</p>
+</section>
+
+<section class="col">
+  <h2 id="eval">测评时，离轴和非离轴差在哪</h2>
+  <p>两个分支用的是同一对目标图，评分方法也一样，差别只在中间那台相机：</p>
+</section>
+<section class="wide">
+  <div class="flow" aria-label="两个分支的测评流程">
+    <div class="lane"><div class="tag">普通分支</div><div>交第一套三层图样 <code>patterns/</code></div><div class="diff">标准相机：原始 pose，fx = fy ≈ 2637.6，主点居中</div><div>前向渲染出左右眼图</div><div>和输入的左右眼图比，掩码内算 PSNR</div></div>
+    <div class="lane"><div class="tag">离轴分支</div><div>交第二套三层图样 <code>offaxis_patterns/</code></div><div class="diff">离轴相机：评测方的离轴相机；我们要声明 K_l、K_r、pose_l、pose_r</div><div>前向渲染出左右眼图</div><div><strong>同一对</strong>输入图（不重新渲染），掩码内算 PSNR</div></div>
+  </div>
+</section>
+<section class="col">
+  <p>评测方用哪台离轴相机，没有公开。助教代码开头写着 "prediction/GT camera construction is not provided"，说明评测方有自己的真值相机。下表是我们在 lego 练习集 100 例上做的对照：用一种相机求解，再分别用四种相机评分。</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>求解用 ↓　评分用 →</th><th>标准</th><th>主点平移</th><th>包围框</th><th>屏幕平面</th></tr></thead>
+    <tbody>
+      <tr><td>标准相机</td><td class="diag">56.70</td><td>15.42</td><td>13.30</td><td>14.01</td></tr>
+      <tr><td>主点平移</td><td>15.59</td><td class="diag">56.24</td><td>14.08</td><td>13.48</td></tr>
+      <tr><td>包围框</td><td>13.92</td><td>14.76</td><td class="diag">39.53</td><td>16.93</td></tr>
+      <tr><td>屏幕平面相机</td><td>14.91</td><td>14.07</td><td>16.94</td><td class="diag">51.62</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">单位 dB。主点平移一列为两眼共用平移，包围框为每眼各自拟合。</p>
+  <p>只有对角线高。求解和评分用同一台相机，分数就高；换一台，就掉到 13–17 dB，和求解器好坏无关。我们 11-07 的主点平移方案自测 56.24 dB，官方只有 5/20，原因就在这里：自己定义相机、自己打分，是循环论证。</p>
+</section>
+
+<section class="col">
+  <h2>为什么屏幕平面相机复用原图也没问题</h2>
+  <p>输入图是按标准相机渲染的。离轴分支直接把它当成离轴相机的画面，必然有偏差。偏差大不大，要看两只眼"重新解释"之后还能不能对应同一个三维场景。lego 30 例的对照：</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>离轴相机</th><th>目标：复用原图（题目规定）</th><th>目标：按该相机重新渲染</th></tr></thead>
+    <tbody>
+      <tr><td>屏幕平面相机</td><td>51.4</td><td>51.8</td></tr>
+      <tr><td>包围框</td><td>38.2</td><td>52.3</td></tr>
+    </tbody>
+  </table></div>
+  <p>两种相机在物理上都能做到约 52 dB；差别只在复用原图之后。屏幕平面相机下，两只眼共用同一块成像面（L2）、同一个像素尺度，把原图贴到屏幕上后，左右两张图仍然近似是一对一致的双眼图，所以几乎不掉分。包围框给两只眼各自一套不同的长方形像素，相当于把两张图各自拉伸，拉伸后的这对图不再对应任何真实场景，三层屏没法同时满足两只眼。</p>
+  <p>这也说明"复用原图、不重新渲染"这条规则，和屏幕平面相机是配套的。</p>
+</section>
+
+<section class="col">
+  <hr>
+  <h2>一句话串起来</h2>
+  <p>离轴建模是在回答：<strong>眼睛不动、图不变，这张图的每个像素该由屏幕上哪一点来显示</strong>。答案就是每只眼的相机。题目没把它唯一定死，所以有不同建法；评测方用了其中一种，声明的相机对上了才得分。我们最后用的是"成像面贴在 L2 屏幕上"的相机：画面像素和屏幕像素一一对应，主点就是眼睛在屏幕上的垂足。</p>
+  <p class="note">图中所有几何都按助教 v3 的约定计算，并已与我们的 Python 实现和助教的 <code>render_numpy</code> 核对：四种建法的 K 和 R 一致到 1e-12，有效像素比例差小于 0.3%（页面用网格采样估算），屏幕平面相机下"画面像素 = 屏幕像素"的误差小于 1e-12 像素。官方分数：主点平移 5/20（11-07 练习），包围框约 15 dB（test2），屏幕平面相机 20/20（11-08 11:40）。</p>
+</section>
+
+<script>
+/* Off-axis camera geometry, TA v3 conventions.
+   World: x towards the viewer, y right, z up; L2 centre O2 = origin; layers at x = +0.06 / 0 / -0.06 m.
+   c2w rotation columns = camera right / up / back (view direction = -back).
+   K: pixel u = fx*X/(-Z) + cx, v = -fy*Y/(-Z) + cy (pixel centres at i+0.5, v down). */
+const LF = (() => {
+  const W = 1920, H = 1080, SW = 0.596736, SH = SW * H / W;
+  const LAYERS = [0.06, 0, -0.06];
+  const FSTD = W / (2 * Math.tan(20 * Math.PI / 180));
+  const S = W / SW;                       // pixels per metre on the panel
+  const IPD = 0.06, DEG = Math.PI / 180;
+
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const norm = v => { const n = Math.hypot(v[0], v[1], v[2]); return v.map(a => a / n); };
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+
+  /* Spec 2.1: back = (P - O2)/|P - O2|, right = up x back, up = back x right. */
+  function lookAt(p) {
+    const z = norm(p), x = norm(cross([0, 0, 1], z));
+    return [x, cross(z, x), z];
+  }
+
+  /* Eye pair like the test sets: cyclopean centre at distance/yaw/elevation from O2, eyes +-IPD/2 along its right axis. */
+  function eyes(dist, yawDeg, elevDeg) {
+    const ce = Math.cos(elevDeg * DEG);
+    const c = [dist * ce * Math.cos(yawDeg * DEG), dist * ce * Math.sin(yawDeg * DEG), dist * Math.sin(elevDeg * DEG)];
+    const r = lookAt(c)[0];
+    return { centre: c, left: c.map((a, i) => a - IPD / 2 * r[i]), right: c.map((a, i) => a + IPD / 2 * r[i]) };
+  }
+
+  const toCam = (cam, p) => { const d = sub(p, cam.C); return [dot(d, cam.R[0]), dot(d, cam.R[1]), dot(d, cam.R[2])]; };
+
+  function project(cam, p) {
+    const [X, Y, Z] = toCam(cam, p);
+    if (Z >= 0) return null;
+    return [cam.K[0] * X / -Z + cam.K[2], cam.K[1] * -Y / -Z + cam.K[3]];
+  }
+
+  function ray(cam, u, v) {
+    const l = [(u - cam.K[2]) / cam.K[0], -(v - cam.K[3]) / cam.K[1], -1];
+    return [0, 1, 2].map(i => cam.R[0][i] * l[0] + cam.R[1][i] * l[1] + cam.R[2][i] * l[2]);
+  }
+
+  /* Where pixel (u,v) meets the layer plane x = xl: world point and panel pixel (us, vs). */
+  function hit(cam, u, v, xl = 0) {
+    const d = ray(cam, u, v);
+    if (Math.abs(d[0]) < 1e-12) return null;
+    const t = (xl - cam.C[0]) / d[0];
+    if (t <= 0) return null;
+    const y = cam.C[1] + t * d[1], z = cam.C[2] + t * d[2];
+    return { t, p: [xl, y, z], us: (y + SW / 2) / SW * W, vs: (SH / 2 - z) / SH * H };
+  }
+
+  const corners = xl => [[xl, -SW / 2, SH / 2], [xl, SW / 2, SH / 2], [xl, SW / 2, -SH / 2], [xl, -SW / 2, -SH / 2]];
+
+  /* Normalised extents (l, r, b0, b1) of the projected L2 corners in a camera with rotation R. */
+  function extents(R, C) {
+    const unit = { K: [1, 1, 0, 0], R, C };
+    const pts = corners(0).map(p => project(unit, p));
+    if (pts.some(q => !q)) return null;
+    const a = pts.map(q => q[0]), b = pts.map(q => q[1]);
+    return [Math.min(...a), Math.max(...a), Math.min(...b), Math.max(...b)];
+  }
+
+  const SCREEN_R = [[0, 1, 0], [0, 0, 1], [1, 0, 0]];   // right = +y, up = +z, back = +x
+
+  function standard(C) { return { K: [FSTD, FSTD, W / 2, H / 2], R: lookAt(C), C }; }
+  function shiftEye(C) {
+    const R = lookAt(C), e = extents(R, C);
+    return { K: [FSTD, FSTD, W / 2 - FSTD * (e[0] + e[1]) / 2, H / 2 - FSTD * (e[2] + e[3]) / 2], R, C };
+  }
+  function bboxEye(C) {
+    const R = lookAt(C), e = extents(R, C);
+    const fx = W / (e[1] - e[0]), fy = H / (e[3] - e[2]);
+    return { K: [fx, fy, -fx * e[0], -fy * e[2]], R, C };
+  }
+  function screenCam(C) { return { K: [S * C[0], S * C[0], W / 2 + S * C[1], H / 2 - S * C[2]], R: SCREEN_R, C }; }
+
+  /* Both eyes of a model; the shared principal-point shift averages the two per-eye shifts. */
+  function model(name, pair) {
+    const L = pair.left, Rt = pair.right;
+    if (name === 'standard') return [standard(L), standard(Rt)];
+    if (name === 'shift') {
+      const a = shiftEye(L), b = shiftEye(Rt);
+      const K = a.K.map((k, i) => (k + b.K[i]) / 2);
+      return [{ ...a, K: K.slice() }, { ...b, K: K.slice() }];
+    }
+    if (name === 'bbox') return [bboxEye(L), bboxEye(Rt)];
+    if (name === 'screen') return [screenCam(L), screenCam(Rt)];
+    throw new Error(name);
+  }
+
+  /* Fraction of pixels whose ray meets all three layers inside the panel (TA strict mask), on an nx x ny grid. */
+  function coverage(cam, nx = 192, ny = 108) {
+    let n = 0;
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      const u = (i + 0.5) * W / nx, v = (j + 0.5) * H / ny;
+      let ok = true;
+      for (const xl of LAYERS) {
+        const h = hit(cam, u, v, xl);
+        if (!h || h.us < 0 || h.us > W || h.vs < 0 || h.vs > H) { ok = false; break; }
+      }
+      if (ok) n++;
+    }
+    return n / (nx * ny);
+  }
+
+  return { W, H, SW, SH, LAYERS, FSTD, S, IPD, lookAt, eyes, project, ray, hit, corners, extents, model, coverage, toCam };
+})();
+if (typeof module !== 'undefined') module.exports = LF;
+
+(() => {
+  const MODELS = [
+    { id: 'standard', name: '标准相机', tok: '--m-standard', look: true },
+    { id: 'shift', name: '主点平移', tok: '--m-shift', look: true },
+    { id: 'bbox', name: '包围框', tok: '--m-bbox', look: true },
+    { id: 'screen', name: '屏幕平面相机', tok: '--m-screen', look: false },
+  ];
+  const state = { d: 1.0, yaw: 25, el: 5, eye: 0, model: 'screen', pick: [520, 300] };
+  const NS = 'http://www.w3.org/2000/svg';
+  const $ = id => document.getElementById(id);
+  const color = m => `var(${MODELS.find(x => x.id === m).tok})`;
+
+  function el(parent, tag, attrs = {}, text) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    parent.appendChild(e);
+    return e;
+  }
+
+  // ---------- controls ----------
+  const segM = $('modelSeg');
+  for (const m of MODELS) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.model = m.id;
+    b.innerHTML = `<span class="sw" style="background:var(${m.tok})"></span>${m.name}`;
+    segM.appendChild(b);
+  }
+  segM.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.model = b.dataset.model; render(); } });
+  $('eyeSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.eye = +b.dataset.eye; render(); } });
+  for (const [id, key] of [['dist', 'd'], ['yaw', 'yaw'], ['elev', 'el']])
+    $(id).addEventListener('input', e => { state[key] = +e.target.value; render(); });
+  document.querySelector('.presets').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const [d, y, el] = b.dataset.p.split(',').map(Number);
+    Object.assign(state, { d, yaw: y, el });
+    $('dist').value = d; $('yaw').value = y; $('elev').value = el;
+    render();
+  });
+
+  // pick a pixel in view B
+  const imgSvg = $('imgView');
+  function pickFrom(ev) {
+    const pt = imgSvg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+    const p = pt.matrixTransform(imgSvg.getScreenCTM().inverse());
+    state.pick = [Math.min(LF.W - 0.5, Math.max(0.5, p.x)), Math.min(LF.H - 0.5, Math.max(0.5, p.y))];
+    render();
+  }
+  let dragging = false;
+  imgSvg.addEventListener('pointerdown', e => { dragging = true; imgSvg.setPointerCapture(e.pointerId); pickFrom(e); });
+  imgSvg.addEventListener('pointermove', e => { if (dragging) pickFrom(e); });
+  imgSvg.addEventListener('pointerup', () => { dragging = false; });
+
+  // ---------- view A: top-down ----------
+  const SC = 375, X0 = 0.8, Y0 = 0.14;
+  const tx = y => (y + X0) * SC;          // world y -> svg x
+  const ty = x => (x + Y0) * SC;          // world x -> svg y (screen at top, viewer below)
+  function rayToX(C, d, xEnd) { const t = (xEnd - C[0]) / d[0]; return t > 0 ? C.map((c, i) => c + t * d[i]) : null; }
+
+  function drawTop(pair, cams) {
+    const svg = $('topView'); svg.textContent = '';
+    const cam = cams[state.model][state.eye];
+    const C = cam.C;
+    // layers
+    LF.LAYERS.forEach((x, k) => {
+      el(svg, 'line', { x1: tx(-LF.SW / 2), x2: tx(LF.SW / 2), y1: ty(x), y2: ty(x), class: k === 1 ? 'layer2' : 'layer13' });
+      el(svg, 'text', { x: tx(LF.SW / 2) + 8, y: ty(x) + 5, class: 'lbl', 'font-size': 16 }, ['L1', 'L2', 'L3'][k]);
+    });
+    el(svg, 'text', { x: tx(-LF.SW / 2), y: ty(0.06) + 24, class: 'lbl', 'font-size': 15 }, '屏幕三层（宽 0.597 m，间距 6 cm）');
+    el(svg, 'circle', { cx: tx(0), cy: ty(0), r: 3, class: 'lbl' });
+    el(svg, 'text', { x: tx(0) + 6, y: ty(0) - 6, class: 'lbl', 'font-size': 14 }, 'O2');
+    // frustum wedge of the selected camera (middle image row)
+    const xEnd = -0.13;
+    const dl = LF.ray(cam, 0, LF.H / 2), dr = LF.ray(cam, LF.W, LF.H / 2);
+    const pl = rayToX(C, dl, xEnd), pr = rayToX(C, dr, xEnd);
+    const col = color(state.model);
+    if (pl && pr) {
+      el(svg, 'path', { d: `M${tx(C[1])},${ty(C[0])} L${tx(pl[1])},${ty(pl[0])} L${tx(pr[1])},${ty(pr[0])} Z`, fill: col, 'fill-opacity': 0.12, stroke: col, 'stroke-width': 1.5 });
+    }
+    // optical axis = ray through the principal point
+    const da = LF.ray(cam, cam.K[2], cam.K[3]);
+    const pa = rayToX(C, da, xEnd);
+    if (pa) el(svg, 'line', { x1: tx(C[1]), y1: ty(C[0]), x2: tx(pa[1]), y2: ty(pa[0]), stroke: col, 'stroke-width': 1.5, 'stroke-dasharray': '5 4' });
+    const foot = LF.hit(cam, cam.K[2], cam.K[3], 0);
+    if (foot) {
+      el(svg, 'circle', { cx: tx(foot.p[1]), cy: ty(0), r: 5, fill: col });
+      el(svg, 'text', { x: tx(foot.p[1]) + (tx(foot.p[1]) > 300 ? -10 : 10), y: ty(-0.06) - 12, 'text-anchor': tx(foot.p[1]) > 300 ? 'end' : 'start', 'font-size': 15, fill: col, 'font-family': 'var(--body)' }, state.model === 'screen' ? '光轴垂直屏幕：主点 = 垂足' : '光轴指向屏幕中心附近');
+    }
+    // image plane at camera depth 0.22 m
+    const lam = 0.22;
+    const a = C.map((c, i) => c + lam * dl[i]), b = C.map((c, i) => c + lam * dr[i]);
+    el(svg, 'line', { x1: tx(a[1]), y1: ty(a[0]), x2: tx(b[1]), y2: ty(b[0]), stroke: col, 'stroke-width': 6, 'stroke-linecap': 'round' });
+    el(svg, 'text', { x: (tx(a[1]) + tx(b[1])) / 2, y: Math.max(ty(a[0]), ty(b[0])) + 22, 'text-anchor': 'middle', 'font-size': 15, fill: col, 'font-family': 'var(--body)' }, '成像面');
+    // picked pixel ray
+    const dp = LF.ray(cam, state.pick[0], state.pick[1]);
+    const pp = rayToX(C, dp, xEnd);
+    if (pp) el(svg, 'line', { x1: tx(C[1]), y1: ty(C[0]), x2: tx(pp[1]), y2: ty(pp[0]), class: 'pickray' });
+    const hp = LF.hit(cam, state.pick[0], state.pick[1], 0);
+    if (hp) el(svg, 'circle', { cx: tx(hp.p[1]), cy: ty(0), r: 4.5, class: 'pick' });
+    // eyes
+    [pair.left, pair.right].forEach((p, i) => {
+      el(svg, 'circle', { cx: tx(p[1]), cy: ty(p[0]), r: i === state.eye ? 7 : 5, class: i === state.eye ? 'eyedot' : 'eyeoff' });
+    });
+    const E = state.eye ? pair.right : pair.left;
+    el(svg, 'text', { x: tx(E[1]) + (E[1] > 0.45 ? -12 : 12), y: ty(E[0]) + 22, 'text-anchor': E[1] > 0.45 ? 'end' : 'start', class: 'lblink', 'font-size': 16 }, state.eye ? '右眼' : '左眼');
+    // scale bar
+    el(svg, 'line', { x1: 20, x2: 20 + 0.2 * SC, y1: 596, y2: 596, class: 'ax', 'stroke-width': 2 });
+    el(svg, 'text', { x: 20, y: 590, class: 'lbl', 'font-size': 14 }, '0.2 m');
+  }
+
+  // ---------- view B: the eye image ----------
+  const VB = { x: -400, y: -225, w: 2720, h: 1530 };
+  function drawImage(cams) {
+    const svg = imgSvg; svg.textContent = '';
+    const cam = cams[state.model][state.eye];
+    const col = color(state.model);
+    const defs = el(svg, 'defs');
+    const cp = el(defs, 'clipPath', { id: 'vbClip' });
+    el(cp, 'rect', { x: VB.x, y: VB.y, width: VB.w, height: VB.h });
+    const g = el(svg, 'g', { 'clip-path': 'url(#vbClip)' });
+    el(g, 'rect', { x: 0, y: 0, width: LF.W, height: LF.H, fill: 'var(--panel)' });
+    // L2 filled, L1/L3 dashed
+    [1, 0, 2].forEach(k => {
+      const pts = LF.corners(LF.LAYERS[k]).map(p => LF.project(cam, p));
+      if (pts.some(q => !q)) return;
+      const d = 'M' + pts.map(q => q.join(',')).join(' L') + ' Z';
+      if (k === 1) el(g, 'path', { d, fill: col, 'fill-opacity': 0.13, stroke: col, 'stroke-width': 6 });
+      else el(g, 'path', { d, fill: 'none', stroke: 'var(--l13)', 'stroke-width': 3, 'stroke-dasharray': '18 14' });
+    });
+    el(g, 'rect', { x: 0, y: 0, width: LF.W, height: LF.H, class: 'frame' });
+    // principal point
+    const [cx, cy] = [cam.K[2], cam.K[3]];
+    const inside = cx > VB.x + 40 && cx < VB.x + VB.w - 40 && cy > VB.y + 40 && cy < VB.y + VB.h - 40;
+    const px = Math.min(VB.x + VB.w - 50, Math.max(VB.x + 50, cx)), py = Math.min(VB.y + VB.h - 50, Math.max(VB.y + 50, cy));
+    el(g, 'line', { x1: px - 40, x2: px + 40, y1: py, y2: py, stroke: 'var(--ink)', 'stroke-width': 5 });
+    el(g, 'line', { x1: px, x2: px, y1: py - 40, y2: py + 40, stroke: 'var(--ink)', 'stroke-width': 5 });
+    const outside = cx < 0 || cx > LF.W || cy < 0 || cy > LF.H;
+    const label = inside ? (outside ? '主点（在画面外）' : '主点') : `主点在更远处 (${cx.toFixed(0)}, ${cy.toFixed(0)})`;
+    const right = px > LF.W / 2;
+    el(g, 'text', { x: px + (right ? -55 : 55), y: py + (py > LF.H / 2 ? -50 : 80), 'text-anchor': right ? 'end' : 'start', class: 'lblink', 'font-size': 58 }, label);
+    // picked pixel
+    el(g, 'circle', { cx: state.pick[0], cy: state.pick[1], r: 22, class: 'pick' });
+    // coverage
+    const cov = LF.coverage(cam, 96, 54);
+    el(g, 'text', { x: LF.W, y: LF.H + 120, 'text-anchor': 'end', class: 'lblink', 'font-size': 64 }, `有效像素 ${(cov * 100).toFixed(0)}%`);
+    el(g, 'text', { x: 0, y: -60, class: 'lbl', 'font-size': 56 }, '画面边界 1920 × 1080');
+    return cov;
+  }
+
+  // ---------- view C: front view of L2 ----------
+  const CB = { x: -960, y: -540, w: 3840, h: 2160 };
+  function footprint(cam, pts) {
+    // returns polyline segments (arrays of [us,vs]) for image points mapped onto the L2 plane
+    const segs = []; let cur = [];
+    for (const [u, v] of pts) {
+      const h = LF.hit(cam, u, v, 0);
+      if (h && Math.abs(h.us) < 1e5 && Math.abs(h.vs) < 1e5) cur.push([h.us, h.vs]);
+      else { if (cur.length > 1) segs.push(cur); cur = []; }
+    }
+    if (cur.length > 1) segs.push(cur);
+    return segs;
+  }
+  function line(u0, v0, u1, v1, n = 40) { return Array.from({ length: n + 1 }, (_, i) => [u0 + (u1 - u0) * i / n, v0 + (v1 - v0) * i / n]); }
+  function drawScreen(cams, pickHits) {
+    const svg = $('scrView'); svg.textContent = '';
+    const defs = el(svg, 'defs');
+    const cp = el(defs, 'clipPath', { id: 'cbClip' });
+    el(cp, 'rect', { x: CB.x, y: CB.y, width: CB.w, height: CB.h });
+    const g = el(svg, 'g', { 'clip-path': 'url(#cbClip)' });
+    el(g, 'rect', { x: 0, y: 0, width: LF.W, height: LF.H, class: 'screenrect' });
+    el(g, 'text', { x: 0, y: -50, class: 'lbl', 'font-size': 90 }, 'L2 屏幕');
+    const cam = cams[state.model][state.eye];
+    const col = color(state.model);
+    const W = LF.W, H = LF.H;
+    const lines = [];
+    for (let i = 0; i <= 4; i++) { lines.push(line(W * i / 4, 0, W * i / 4, H)); lines.push(line(0, H * i / 4, W, H * i / 4)); }
+    for (const pts of lines) for (const seg of footprint(cam, pts)) {
+      el(g, 'polyline', { points: seg.map(q => q.join(',')).join(' '), fill: 'none', stroke: col, 'stroke-width': 7, 'stroke-opacity': 0.55 });
+    }
+    // border thicker
+    const border = [...line(0, 0, W, 0), ...line(W, 0, W, H), ...line(W, H, 0, H), ...line(0, H, 0, 0)];
+    for (const seg of footprint(cam, border)) el(g, 'polyline', { points: seg.map(q => q.join(',')).join(' '), fill: 'none', stroke: col, 'stroke-width': 16 });
+    // picked pixel under each model
+    MODELS.forEach(m => {
+      const h = pickHits[m.id];
+      if (!h) return;
+      el(g, 'circle', { cx: h.us, cy: h.vs, r: m.id === state.model ? 48 : 34, fill: color(m.id), stroke: 'var(--panel)', 'stroke-width': 10 });
+    });
+  }
+
+  // ---------- table ----------
+  function drawTable(cams, pickHits, covSel) {
+    const tb = document.querySelector('#kTable tbody'); tb.textContent = '';
+    for (const m of MODELS) {
+      const c = cams[m.id][state.eye];
+      const cov = m.id === state.model ? covSel : LF.coverage(c, 96, 54);
+      const h = pickHits[m.id];
+      const tr = document.createElement('tr');
+      if (m.id === state.model) tr.className = 'sel';
+      tr.innerHTML = `<td><span class="sw" style="background:var(${m.tok})"></span>　${m.name}</td>` +
+        `<td>${c.K[0].toFixed(1)}</td><td>${c.K[1].toFixed(1)}</td><td>${c.K[2].toFixed(1)}</td><td>${c.K[3].toFixed(1)}</td>` +
+        `<td style="font-family:var(--body)">${m.look ? '看向屏幕中心' : '垂直于屏幕'}</td><td>${(cov * 100).toFixed(0)}%</td>` +
+        `<td>${h ? `(${h.us.toFixed(0)}, ${h.vs.toFixed(0)})` : '—'}</td>`;
+      tb.appendChild(tr);
+    }
+  }
+
+  function render() {
+    $('distV').textContent = state.d.toFixed(2) + ' m';
+    $('yawV').textContent = (state.yaw > 0 ? '+' : '') + state.yaw + '°';
+    $('elevV').textContent = (state.el > 0 ? '+' : '') + state.el + '°';
+    for (const b of segM.children) b.setAttribute('aria-pressed', b.dataset.model === state.model);
+    for (const b of $('eyeSeg').children) b.setAttribute('aria-pressed', +b.dataset.eye === state.eye);
+    const pair = LF.eyes(state.d, state.yaw, state.el);
+    const cams = {};
+    for (const m of MODELS) cams[m.id] = LF.model(m.id, pair);
+    const pickHits = {};
+    for (const m of MODELS) pickHits[m.id] = LF.hit(cams[m.id][state.eye], state.pick[0], state.pick[1], 0);
+    drawTop(pair, cams);
+    const cov = drawImage(cams);
+    drawScreen(cams, pickHits);
+    drawTable(cams, pickHits, cov);
+  }
+  render();
+})();
+</script>
+</body></html>
