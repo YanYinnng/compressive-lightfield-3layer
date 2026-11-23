@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +10,38 @@ from .exam_adapter import network_initial
 from .exam_data import ExamDataset, read_manifest
 from .exam_geometry import ExamRenderer, masked_psnr, screen_corners, validate_pose
 from .ta_reference import load_reference
+
+DEMO = Path(__file__).resolve().parents[1]/'testing/demo_input/test.json'
+NO_DEMO = 'needs the TA v1.4 demo package (testing/demo_input), which is not redistributed in this repository'
+
+
+def look_at_pair(centre):
+    """Left/right c2w for a cyclopean eye at `centre` looking at O2 (no roll), eyes 6 cm apart."""
+    back = np.asarray(centre, dtype=np.float64)/np.linalg.norm(centre)
+    right = np.cross([0., 0., 1.], back); right /= np.linalg.norm(right)
+    pair = []
+    for side in (-.03, .03):
+        view = np.eye(4); view[:3, :3] = np.stack([right, np.cross(back, right), back], axis=1)
+        view[:3, 3] = np.asarray(centre)+side*right
+        pair.append(view.tolist())
+    return pair
+
+
+def demo_manifest(directory):
+    """The TA demo manifest when present, else two synthetic samples (random 1920x1080 RGB8 images, demo-like poses)."""
+    if DEMO.is_file():
+        return DEMO
+    from PIL import Image
+    generator, samples = np.random.default_rng(7), []
+    for index, centre in enumerate(((.957, -.02, .01), (.899, .05, -.02))):
+        for side in ('left', 'right'):
+            Image.fromarray(generator.integers(0, 256, (1080, 1920, 3), dtype=np.uint8)).save(Path(directory)/f'{index}_{side}.png')
+        pose_l, pose_r = look_at_pair(centre)
+        samples.append({'id': f'demo_{index:06d}', 'left': f'{index}_left.png', 'right': f'{index}_right.png',
+                        'pose_l': pose_l, 'pose_r': pose_r})
+    path = Path(directory)/'test.json'
+    path.write_text(json.dumps({'samples': samples}))
+    return path
 
 
 class ExamTests(unittest.TestCase):
@@ -66,10 +99,12 @@ class ExamTests(unittest.TestCase):
     def test_pretrained_initialization_prefers_right_eye_first(self):
         weights = Path(__file__).resolve().parents[1]/'weights/pretrained_model.pth'
         if not weights.is_file():
-            self.skipTest('pretrained weights missing')
+            self.skipTest('needs EyeReal weights (python tools/fetch_weights.py -> weights/pretrained_model.pth)')
         from .core import make_model
         from .exam_data import read_rgb8
-        path, rows = read_manifest(Path(__file__).resolve().parents[1]/'testing/demo_input/test.json')
+        if not DEMO.is_file():
+            self.skipTest(NO_DEMO)
+        path, rows = read_manifest(DEMO)
         row, (height, width) = rows[0], (270, 480)
         poses = np.stack([row['pose_l'], row['pose_r']])
         images = torch.from_numpy(np.stack([read_rgb8(path.parent/row[k]) for k in ['left', 'right']]))
@@ -88,10 +123,8 @@ class ExamTests(unittest.TestCase):
         self.assertGreater(chosen, score(unswapped)['psnr_mean_eyes_dB']+2)
 
     def test_manifest_rejects_duplicate_ids_and_centimetres_as_metres(self):
-        import json
-        ref = Path(__file__).resolve().parents[1]/'testing/demo_input/test.json'
-        data = json.loads(ref.read_text())
         with tempfile.TemporaryDirectory() as directory:
+            data = json.loads(demo_manifest(directory).read_text())
             path = Path(directory)/'test.json'
             data['samples'][1]['id'] = data['samples'][0]['id']
             path.write_text(json.dumps(data))
@@ -105,16 +138,16 @@ class ExamTests(unittest.TestCase):
                 read_manifest(path)
 
     def test_dataset_uses_manifest_index_and_native_training_layer_order(self):
-        path = Path(__file__).resolve().parents[1]/'testing/demo_input/test.json'
-        dataset = ExamDataset(path)
-        images, first, screens = dataset[0]
-        _, second, _ = dataset[1]
-        self.assertEqual(tuple(images.shape), (2, 3, 1080, 1920))
-        self.assertFalse(torch.equal(first, second))
-        torch.testing.assert_close(screens[:, 0, 0], torch.tensor([-.06, 0, .06], dtype=torch.float64))
-        import json
-        row = json.loads(path.read_text())['samples'][0]
-        torch.testing.assert_close(first, torch.tensor([row['pose_r'], row['pose_l']], dtype=torch.float64))
+        with tempfile.TemporaryDirectory() as directory:
+            path = demo_manifest(directory)
+            dataset = ExamDataset(path)
+            images, first, screens = dataset[0]
+            _, second, _ = dataset[1]
+            self.assertEqual(tuple(images.shape), (2, 3, 1080, 1920))
+            self.assertFalse(torch.equal(first, second))
+            torch.testing.assert_close(screens[:, 0, 0], torch.tensor([-.06, 0, .06], dtype=torch.float64))
+            row = json.loads(path.read_text())['samples'][0]
+            torch.testing.assert_close(first, torch.tensor([row['pose_r'], row['pose_l']], dtype=torch.float64))
 
     def test_non_rotation_pose_is_rejected_and_eye_psnr_aggregation_is_explicit(self):
         bad = np.eye(4);bad[0, 0] = 2

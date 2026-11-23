@@ -38,10 +38,17 @@ class RayEvalTests(unittest.TestCase):
 
     @unittest.skipUnless(torch.cuda.is_available(), 'CUDA required for the native-resolution GPU check')
     def test_native_resolution_gpu_float64_has_zero_mask_difference(self):
-        """A3 acceptance: TA demo poses, 1920x1080, float64 GPU grids versus the TA reference."""
+        """A3 acceptance: 1920x1080, float64 GPU grids versus the TA reference (TA demo poses when present)."""
         import json
         from pathlib import Path
-        rows = json.loads((Path(__file__).resolve().parents[1]/'testing/demo_input/test.json').read_text())['samples']
+        demo = Path(__file__).resolve().parents[1]/'testing/demo_input/test.json'
+        if demo.is_file():
+            rows = json.loads(demo.read_text())['samples']
+        else:  # same geometry as the two demo pairs: eyes 6 cm apart, about 0.96 m and 0.90 m from O2, looking at O2
+            rows = []
+            for x, y, z in ((.957, -.02, .01), (.899, .05, -.02)):
+                centre = np.array([x, y, z]); right = np.cross([0., 0., 1.], centre); right /= np.linalg.norm(right)
+                rows.append({'pose_l': pose(*(centre-.03*right)), 'pose_r': pose(*(centre+.03*right))})
         patterns = np.random.default_rng(11).integers(0, 256, (3, 1080, 1920, 3), dtype=np.uint8)
         source = torch.from_numpy(patterns).permute(0, 3, 1, 2).cuda().double()/255
         reference = load_reference()

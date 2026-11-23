@@ -2,7 +2,7 @@
 
 **Compressive light field display with three stacked LCD layers: per-sample physical solving, off-axis camera modelling, and depth layering.**
 
-这是上海创智学院金秋营实训课题"AI 驱动的压缩光场物理建模和成像分析"的个人解决方案（单人组，2026-11-05 至 11-08）。
+这是上海创智学院金秋营实训课题"AI 驱动的压缩光场物理建模和成像分析"的个人解决方案（单人组，2026-11-06 至 11-08，共 48 小时）。
 
 最终正式测试的四项排名分：
 
@@ -33,7 +33,7 @@
 ## 方法
 
 ### 画质：在精确前向上逐例求解
-- 网络（EyeReal 公开权重）一次前向只有约 33 dB。我们把它的输出当初值，再在精确前向模型上逐例做投影 Adam（100 步，lr 0.08），按实际提交的 RGB8 量化结果选检查点。最终做到 55–57 dB。
+- 网络（EyeReal 公开权重）一次前向只有约 33 dB。我把它的输出当初值，再在精确前向模型上逐例做投影 Adam（100 步，lr 0.08），按实际提交的 RGB8 量化结果选检查点。最终做到 55–57 dB。
 - 渲染器在 GPU 上重写、可求导，与官方前向函数逐像素核对：最大误差 ≤ 6×10⁻⁸，有效掩码零差异。所以自测分数就是官方分数。
 
 ### 速度：拆解耗时构成，一项一项抠
@@ -153,9 +153,17 @@ python testing_v3/check_submission.py --index <test.json> --submission group_exa
 ```
 
 - **依赖**：Python 3.10+、PyTorch（CUDA）、torchvision、NumPy、Pillow、SciPy、CuPy。没有 CuPy 时，可设置 `LF_FUSED_BACKEND=torch`，用 nvcc 编译 torch 扩展。
-- **测试**：`python -m unittest discover -s lightfield_lab -p "test_*.py" -t .`。
-  - 本地 52 项中 44 项通过；
-  - 另有 7 项需要课题方的 v1.4 资料包（`testing/`、演示输入、lego 3DGS 资产），本仓库不包含这些，所以会报找不到文件。
+- **测试**：`python -m unittest discover -s lightfield_lab -p "test_*.py" -t .`
+  - 共 61 项。在不含权重和课题方数据的干净克隆上，58 项通过，3 项跳过，并会打印跳过原因：
+
+    | 跳过的测试 | 检查的内容 | 需要的外部文件 |
+    |---|---|---|
+    | `test_pretrained_initialization_prefers_right_eye_first` | EyeReal 网络初值按"右眼在前"的输入顺序，比反序高 2 dB 以上 | EyeReal 权重（`python tools/fetch_weights.py`）和课题方 v1.4 演示图像 |
+    | `test_supplied_ply_has_complete_degree3_gaussian_fields` | 课题方 lego 3DGS 模型的字段完整（340889 个高斯、三阶球谐） | 课题方 `lego_bulldozer.ply`（84 MB） |
+    | `test_supplied_poses_are_look_at_up_to_float32` | 练习集给出的位姿都精确注视屏幕中心（误差 < 0.05°），离轴模型依赖这一点 | 课题方 lego 练习集 |
+
+  - 这三项检查的都是课题方数据或第三方权重，不是本仓库代码的功能，所以缺少这些文件时跳过不影响仓库完整性。
+  - 渲染器、融合算子、离轴相机、分层等代码的正确性测试都会运行：与官方前向逐像素一致的检查使用仓库里的 `testing_v3/inference.py`；没有课题方演示数据时，改用同样几何的合成位姿和图像。
 
 **说明**：本仓库不包含课题方的数据集、练习集和 3DGS 资产，也不包含模型权重和实验原始结果。评测平台专用的提交与调度脚本也已移除。
 

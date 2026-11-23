@@ -143,6 +143,7 @@ def forward_render_intrinsics(patterns_rgb, poses, intrinsics):
     if k is None:
         k = np.broadcast_to(standard_intrinsics(h, w), (len(poses), 4))
     reference = load_reference()
+    bilinear = getattr(reference, '_bilinear_rgb', None) or reference.bilinear  # v1.4 / v3 name of the same sampler
     eyes = np.empty((len(poses), h, w, 3), dtype=np.float32)
     masks = np.empty((len(poses), h, w), dtype=bool)
     for eye, (pose, (fx, fy, cx, cy)) in enumerate(zip(poses, k)):
@@ -160,7 +161,7 @@ def forward_render_intrinsics(patterns_rgb, poses, intrinsics):
                 u = (o[1]+t*dy+.596736/2)/.596736*w
                 v = (.596736*h/w/2-(o[2]+t*dz))/(.596736*h/w)*h
                 valid &= (t > 0)&(u >= 0)&(u <= w)&(v >= 0)&(v <= h)
-                phase += reference._bilinear_rgb(patterns[layer], u, v)
+                phase += bilinear(patterns[layer], u, v)
             eyes[eye, top:bottom] = np.sin(phase*(np.pi/2))**2
             masks[eye, top:bottom] = valid
     return eyes, masks

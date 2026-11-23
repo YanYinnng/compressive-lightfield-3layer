@@ -28,7 +28,7 @@ class OffaxisModelTests(unittest.TestCase):
         self.assertGreater(r[2, 1], 0)  # up axis points up
         np.testing.assert_allclose(look_at_o2([1., 0., 0.])[:3, :3], [[0, 0, 1], [1, 0, 0], [0, 1, 0]], atol=1e-12)
 
-    @unittest.skipUnless(PRACTICE.is_file(), 'practice manifest not present')
+    @unittest.skipUnless(PRACTICE.is_file(), 'needs the TA lego practice set (_ta_releases/lego100_practice_v1), which is not redistributed in this repository')
     def test_supplied_poses_are_look_at_up_to_float32(self):
         rows = json.loads(PRACTICE.read_text(encoding='utf-8'))['samples']
         worst = 0.

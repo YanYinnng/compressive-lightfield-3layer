@@ -43,6 +43,8 @@ class CollectionTests(unittest.TestCase):
         self.assertEqual(diagnostic['left_right_mean_abs_difference'],0.)
         self.assertIsNone(renderer.render(stereo_poses(.9,0,0)[:1],height=4,width=6)[1]['left_right_mean_abs_difference'])
 
+    @unittest.skipUnless((Path(__file__).resolve().parents[1]/'data_collection/assets/lego_bulldozer.ply').is_file(),
+                         'needs the TA lego 3DGS asset (data_collection/assets/lego_bulldozer.ply, 84 MB), not redistributed')
     def test_supplied_ply_has_complete_degree3_gaussian_fields(self):
         p=Path(__file__).resolve().parents[1]/'data_collection/assets/lego_bulldozer.ply'
         source=load_gaussian_ply(p)
